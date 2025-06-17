@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Download Your Yoga Certificate</title>
+  <style>
+    body{font-family:system-ui, sans-serif;max-width:600px;margin:auto;padding:2rem}
+    input{width:100%;padding:.6rem;font-size:1rem;margin-bottom:1rem;border:1px solid #ccc;border-radius:4px}
+    button{padding:.4rem .8rem;font-size:1rem;border:none;background:#004aad;color:#fff;border-radius:4px;cursor:pointer}
+    button:hover{background:#00317d}
+    #results{margin-top:1rem}
+    .file-row{display:flex;justify-content:space-between;align-items:center;padding:.4rem .2rem;border-bottom:1px dashed #ddd}
+  </style>
+</head>
+<body>
+  <h2>Yoga Certificate Download</h2>
+
+  <input id="searchBox" placeholder="Type your full name & press Enter" />
+
+  <div id="results"></div>
+
+  <script>
+    // --- CONFIG: Only this URL is needed now -------------------------------
+    const CERT_DIR_URL = "https://github.com/vindhyarai1203/yoga_daye/tree/main/certificates"; 
+
+    // Extract GitHub metadata from CERT_DIR_URL
+    const match = CERT_DIR_URL.match(/github\.com\/([^/]+)\/([^/]+)\/tree\/([^/]+)\/(.+)/);
+    if (!match) {
+      document.getElementById("results").innerHTML =
+        "<p style='color:red'>Invalid CERT_DIR_URL format. Please check it.</p>";
+      throw new Error("Invalid CERT_DIR_URL format");
+    }
+
+    const [_, GH_USER, GH_REPO, GH_BRANCH, CERT_DIR] = match;
+    const API_URL = `https://api.github.com/repos/${GH_USER}/${GH_REPO}/contents/${CERT_DIR}?ref=${GH_BRANCH}`;
+    const RAW_ROOT = `https://raw.githubusercontent.com/${GH_USER}/${GH_REPO}/${GH_BRANCH}/${CERT_DIR}/`;
+
+    // --- FETCH FILE LIST ---------------------------------------------------
+    let allFiles = [];
+    fetch(API_URL)
+      .then(res => res.json())
+      .then(data => {
+        if (!Array.isArray(data)) throw new Error("Unexpected GitHub API response");
+        allFiles = data.filter(item => item.type === "file" && item.name.toLowerCase().endsWith(".pdf"))
+                       .map(item => item.name);
+      })
+      .catch(err => {
+        console.error(err);
+        document.getElementById("results").innerHTML =
+          "<p style='color:red'>Could not load certificate list. Try again later.</p>";
+      });
+
+    // --- SEARCH HANDLER -----------------------------------------------------
+    document.getElementById("searchBox").addEventListener("keypress", e => {
+      if (e.key === "Enter") runSearch(e.target.value);
+    });
+
+    function runSearch(rawName) {
+      const keyword = rawName.trim().replace(/\s+/g, "_").toLowerCase();
+      const match = allFiles.filter(f => f.toLowerCase().includes(keyword));
+
+      const container = document.getElementById("results");
+      container.innerHTML = "";
+
+      if (match.length === 0) {
+        container.innerHTML = "<p>No certificates found. Please check your name.</p>";
+        return;
+      }
+
+      match.forEach(file => {
+        const row = document.createElement("div");
+        row.className = "file-row";
+
+        const label = document.createElement("span");
+        label.textContent = file;
+
+        const btn = document.createElement("button");
+        btn.textContent = "Download";
+        btn.onclick = () => window.open(RAW_ROOT + file, "_blank");
+
+        row.appendChild(label);
+        row.appendChild(btn);
+        container.appendChild(row);
+      });
+    }
+  </script>
+</body>
+</html>
